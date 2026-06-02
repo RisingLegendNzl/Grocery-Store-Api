@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coles API Tester</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Archivo:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c232d;
+    --border: #2a323d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #e01a22;       /* Coles red */
+    --accent-soft: #ff3b42;
+    --green: #3fb950;
+    --amber: #d29922;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Archivo', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    background-image: radial-gradient(circle at 20% 0%, rgba(224,26,34,0.08), transparent 40%),
+                      radial-gradient(circle at 100% 100%, rgba(224,26,34,0.05), transparent 40%);
+  }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex; align-items: center; gap: 14px;
+    background: rgba(14,17,22,0.7);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--accent);
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 20px; color: #fff;
+    box-shadow: 0 0 20px rgba(224,26,34,0.4);
+  }
+  header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  header h1 span { color: var(--muted); font-weight: 400; font-family: var(--mono); font-size: 12px; display: block; }
+
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+  @media (max-width: 900px){ .wrap{ grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 14px; font-weight: 700; }
+
+  label { font-size: 11px; color: var(--muted); display: block; margin: 12px 0 5px; font-weight: 600; letter-spacing: .3px; }
+  input, select {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 12px; border-radius: 8px; font-size: 13px;
+    font-family: var(--mono); transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(224,26,34,0.15); }
+
+  button {
+    background: var(--accent); color: #fff; border: none; padding: 11px 16px;
+    border-radius: 8px; font-family: var(--sans); font-weight: 700; font-size: 13px;
+    cursor: pointer; transition: transform .1s, background .15s; width: 100%;
+  }
+  button:hover { background: var(--accent-soft); }
+  button:active { transform: scale(.98); }
+  button.ghost { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); }
+  button.ghost:hover { border-color: var(--accent); background: var(--panel); }
+  button.sm { width: auto; padding: 6px 12px; font-size: 11px; }
+
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+
+  .endpoint-group { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tab {
+    padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .status-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .badge { font-family: var(--mono); font-size: 12px; padding: 4px 10px; border-radius: 6px; font-weight: 700; }
+  .badge.ok { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+  .badge.err { background: rgba(224,26,34,.15); color: var(--accent-soft); border: 1px solid rgba(224,26,34,.3); }
+  .badge.wait { background: rgba(210,153,34,.15); color: var(--amber); border: 1px solid rgba(210,153,34,.3); }
+  .ms { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+
+  pre {
+    background: #0a0d12; border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+    overflow: auto; font-family: var(--mono); font-size: 12px; line-height: 1.6; max-height: 540px;
+    color: #c9d1d9; white-space: pre-wrap; word-break: break-word;
+  }
+  .k { color: var(--accent-soft); } .s { color: #7ee787; } .n { color: #79c0ff; } .b { color: #d2a8ff; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 12px; }
+  .card {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px;
+    transition: transform .12s, border-color .12s;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .card .pname { font-weight: 700; font-size: 14px; line-height: 1.3; margin-bottom: 8px; }
+  .card .price { color: var(--green); font-family: var(--mono); font-weight: 700; font-size: 18px; }
+  .card .meta { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: var(--mono); }
+  .card .meta span { color: var(--text); }
+
+  .log { font-family: var(--mono); font-size: 11px; }
+  .log-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); align-items: center; }
+  .log-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 40px 0; }
+  .recent { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 11px; background: var(--panel-2); border: 1px solid var(--border); padding: 4px 9px; border-radius: 20px; cursor: pointer; font-family: var(--mono); color: var(--muted); }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--green); color: #07140a; padding: 10px 16px; border-radius: 8px; font-weight: 700; font-size: 13px; opacity: 0; transform: translateY(10px); transition: .2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">C</div>
+  <h1>Coles API Tester <span>RapidAPI · Full Catalog & Pricing Intelligence</span></h1>
+</header>
+
+<div class="wrap">
+  <!-- ============ LEFT: CONFIG + CONTROLS ============ -->
+  <div>
+    <div class="panel">
+      <h2>Connection</h2>
+      <label>RapidAPI Key</label>
+      <input id="apiKey" type="password" placeholder="X-RapidAPI-Key (memory only)">
+      <label>RapidAPI Host</label>
+      <input id="apiHost" value="coles-australia-full-catalog-pricing-intelligence-api.p.rapidapi.com">
+      <div class="hint">Key is held in memory only and never persisted.</div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h2>Request Builder</h2>
+      <div class="tabs">
+        <div class="tab active" data-mode="search">Search</div>
+        <div class="tab" data-mode="category">Category</div>
+        <div class="tab" data-mode="detail">Detail</div>
+      </div>
+
+      <div id="mode-search">
+        <label>Product Query</label>
+        <input id="q" placeholder="e.g. milk, tim tams, bread">
+        <div class="recent" id="recent"></div>
+        <button style="margin-top:14px;" onclick="run('search')">Search Products</button>
+      </div>
+
+      <div id="mode-category" style="display:none;">
+        <label>Category (slug or name)</label>
+        <input id="cat" placeholder="e.g. dairy-eggs-fridge">
+        <button style="margin-top:14px;" onclick="run('category')">Browse Category</button>
+      </div>
+
+      <div id="mode-detail" style="display:none;">
+        <label>Product ID / Slug / URL</label>
+        <input id="pid" placeholder="e.g. 6745749 or product slug">
+        <button style="margin-top:14px;" onclick="run('detail')">Get Product Detail</button>
+      </div>
+
+      <div class="endpoint-group">
+        <h2>Endpoint Path Map</h2>
+        <div class="hint">Edit these if the API's real paths differ — the frontend stays untouched.</div>
+        <label>Search path</label>
+        <input id="p_search" value="/products/search">
+        <label>Category path</label>
+        <input id="p_category" value="/categories/products">
+        <label>Detail path</label>
+        <input id="p_detail" value="/products/detail">
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h2>Request Log</h2>
+      <div class="log" id="log"><div class="empty">No requests yet.</div></div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT: RESULTS ============ -->
+  <div class="panel">
+    <h2>Response</h2>
+    <div class="status-bar">
+      <span id="status" class="badge wait">idle</span>
+      <span id="timing" class="ms"></span>
+      <div style="flex:1;"></div>
+      <button class="ghost sm" onclick="setView('cards')" id="vCards">Cards</button>
+      <button class="ghost sm" onclick="setView('raw')" id="vRaw">Raw JSON</button>
+      <button class="ghost sm" onclick="copyResp()">Copy</button>
+    </div>
+    <div id="cardsView" class="cards"><div class="empty">Run a request to see results.</div></div>
+    <pre id="rawView" style="display:none;"></pre>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied!</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let lastResp = null, view = 'cards', recent = [];
+
+// ---- tab switching ----
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  ['search','category','detail'].forEach(m => $('mode-'+m).style.display = 'none');
+  $('mode-'+t.dataset.mode).style.display = 'block';
+});
+
+// ---- recent searches (localStorage when run locally; falls back to memory in sandbox) ----
+function loadRecent(){
+  try { recent = JSON.parse(localStorage.getItem('coles_recent')||'[]'); } catch(e){ recent = []; }
+  renderRecent();
+}
+function saveRecent(term){
+  recent = [term, ...recent.filter(r => r !== term)].slice(0,5);
+  try { localStorage.setItem('coles_recent', JSON.stringify(recent)); } catch(e){}
+  renderRecent();
+}
+function renderRecent(){
+  $('recent').innerHTML = recent.map(r => `<span class="chip" onclick="$('q').value='${r.replace(/'/g,"")}'">${r}</span>`).join('');
+}
+
+// ---- view toggle ----
+function setView(v){
+  view = v;
+  $('cardsView').style.display = v==='cards' ? 'grid' : 'none';
+  $('rawView').style.display = v==='raw' ? 'block' : 'none';
+}
+
+// ---- request log ----
+function logReq(method, path, status, ok){
+  const el = $('log');
+  if(el.querySelector('.empty')) el.innerHTML = '';
+  const color = ok ? 'var(--green)' : 'var(--accent-soft)';
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.innerHTML = `<span class="dot" style="background:${color}"></span>
+    <span style="color:var(--muted)">${new Date().toLocaleTimeString()}</span>
+    <span>${method}</span>
+    <span style="flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${path}</span>
+    <span style="color:${color};font-weight:700">${status}</span>`;
+  el.prepend(item);
+}
+
+// ---- JSON pretty highlighter ----
+function highlight(obj){
+  const json = JSON.stringify(obj, null, 2);
+  return json
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="s">"$1"</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="n">$1</span>')
+    .replace(/: (true|false|null)/g, ': <span class="b">$1</span>');
+}
+
+// ---- find product array anywhere in response ----
+function extractProducts(data){
+  if(Array.isArray(data)) return data;
+  for(const key of ['products','results','items','data','catalog','hits']){
+    if(data && Array.isArray(data[key])) return data[key];
+    if(data && data[key] && Array.isArray(data[key].products)) return data[key].products;
+  }
+  if(data && typeof data === 'object' && (data.name || data.title || data.productName)) return [data];
+  return [];
+}
+function field(p, keys){ for(const k of keys){ if(p[k]!=null && p[k]!=='') return p[k]; } return '—'; }
+
+function renderCards(data){
+  const items = extractProducts(data);
+  if(!items.length){ $('cardsView').innerHTML = '<div class="empty">No product-shaped data found. Check Raw JSON.</div>'; return; }
+  $('cardsView').innerHTML = items.map(p => {
+    let price = field(p, ['price','currentPrice','salePrice','pricing','retailPrice']);
+    if(price && typeof price === 'object') price = price.current || price.amount || JSON.stringify(price);
+    if(typeof price === 'number') price = '$'+price.toFixed(2);
+    return `<div class="card">
+      <div class="pname">${field(p,['name','title','productName','displayName'])}</div>
+      <div class="price">${price}</div>
+      <div class="meta">Brand: <span>${field(p,['brand','brandName','manufacturer'])}</span></div>
+      <div class="meta">Size: <span>${field(p,['size','packageSize','unit','weight'])}</span></div>
+      <div class="meta">ID: <span>${field(p,['id','productId','sku','code','slug'])}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ---- main request ----
+async function run(mode){
+  const key = $('apiKey').value.trim();
+  const host = $('apiHost').value.trim();
+  if(!key){ flash('Enter your RapidAPI key first', true); return; }
+
+  let path, params = {};
+  if(mode==='search'){
+    const q = $('q').value.trim();
+    if(!q){ flash('Enter a search query', true); return; }
+    path = $('p_search').value; params.query = q; params.q = q;
+    saveRecent(q);
+  } else if(mode==='category'){
+    const c = $('cat').value.trim();
+    path = $('p_category').value; params.category = c; params.slug = c;
+  } else {
+    const id = $('pid').value.trim();
+    path = $('p_detail').value; params.id = id; params.productId = id; params.url = id;
+  }
+
+  const qs = new URLSearchParams(params).toString();
+  const url = `https://${host}${path}?${qs}`;
+
+  $('status').className = 'badge wait'; $('status').textContent = 'loading…';
+  $('timing').textContent = '';
+  const t0 = performance.now();
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': host }
+    });
+    const ms = Math.round(performance.now() - t0);
+    let data;
+    const text = await res.text();
+    try { data = JSON.parse(text); } catch(e){ data = { raw: text }; }
+    lastResp = data;
+
+    $('status').className = 'badge ' + (res.ok ? 'ok' : 'err');
+    $('status').textContent = res.status + ' ' + res.statusText;
+    $('timing').textContent = ms + ' ms';
+    $('rawView').innerHTML = highlight(data);
+    renderCards(data);
+    logReq('GET', path, res.status, res.ok);
+  } catch(err){
+    const ms = Math.round(performance.now() - t0);
+    $('status').className = 'badge err'; $('status').textContent = 'Network error';
+    $('timing').textContent = ms + ' ms';
+    lastResp = { error: err.message };
+    $('rawView').innerHTML = highlight(lastResp);
+    $('cardsView').innerHTML = `<div class="empty" style="color:var(--accent-soft)">${err.message}<br><br>If this is CORS, RapidAPI calls may need to run from your own origin rather than a file:// page.</div>`;
+    logReq('GET', path, 'ERR', false);
+  }
+}
+
+function copyResp(){
+  if(!lastResp){ flash('Nothing to copy', true); return; }
+  navigator.clipboard.writeText(JSON.stringify(lastResp, null, 2)).then(()=>flash('Copied!'));
+}
+function flash(msg, err){
+  const t = $('toast'); t.textContent = msg;
+  t.style.background = err ? 'var(--accent)' : 'var(--green)';
+  t.style.color = err ? '#fff' : '#07140a';
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+// debounce: pressing Enter in the search box fires search
+$('q').addEventListener('keydown', e => { if(e.key==='Enter') run('search'); });
+loadRecent();
+</script>
+</body>
+</html>
