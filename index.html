@@ -145,37 +145,48 @@
       <div class="tabs">
         <div class="tab active" data-mode="search">Search</div>
         <div class="tab" data-mode="category">Category</div>
-        <div class="tab" data-mode="detail">Detail</div>
+        <div class="tab" data-mode="categories">Categories</div>
       </div>
 
       <div id="mode-search">
         <label>Product Query</label>
         <input id="q" placeholder="e.g. milk, tim tams, bread">
         <div class="recent" id="recent"></div>
+        <div class="row" style="margin-top:10px;">
+          <div><label>Page</label><input id="s_page" value="1"></div>
+          <div><label>Limit</label><input id="s_limit" value="30"></div>
+        </div>
         <button style="margin-top:14px;" onclick="run('search')">Search Products</button>
       </div>
 
       <div id="mode-category" style="display:none;">
-        <label>Category (slug or name)</label>
-        <input id="cat" placeholder="e.g. dairy-eggs-fridge">
+        <label>Category ID / Slug</label>
+        <input id="cat" placeholder="from the Categories tab">
+        <div class="row" style="margin-top:10px;">
+          <div><label>Page</label><input id="c_page" value="1"></div>
+          <div><label>Limit</label><input id="c_limit" value="30"></div>
+        </div>
         <button style="margin-top:14px;" onclick="run('category')">Browse Category</button>
       </div>
 
-      <div id="mode-detail" style="display:none;">
-        <label>Product ID / Slug / URL</label>
-        <input id="pid" placeholder="e.g. 6745749 or product slug">
-        <button style="margin-top:14px;" onclick="run('detail')">Get Product Detail</button>
+      <div id="mode-categories" style="display:none;">
+        <label>Refresh</label>
+        <select id="refresh"><option value="false">false</option><option value="true">true</option></select>
+        <button style="margin-top:14px;" onclick="run('categories')">List All Categories</button>
+        <div class="hint">Returns the full category tree. Use an id/slug from here in the Category tab.</div>
       </div>
 
       <div class="endpoint-group">
         <h2>Endpoint Path Map</h2>
-        <div class="hint">Edit these if the API's real paths differ — the frontend stays untouched.</div>
+        <div class="hint">Real Coles API paths. Edit if they change — the frontend stays untouched.</div>
         <label>Search path</label>
-        <input id="p_search" value="/products/search">
-        <label>Category path</label>
-        <input id="p_category" value="/categories/products">
-        <label>Detail path</label>
-        <input id="p_detail" value="/products/detail">
+        <input id="p_search" value="/coles/search">
+        <label>Categories list path</label>
+        <input id="p_categories" value="/coles/categories">
+        <label>Category products path</label>
+        <input id="p_category" value="/coles/category">
+        <label>context_mode</label>
+        <input id="ctxMode" value="delivery">
       </div>
     </div>
 
@@ -211,7 +222,7 @@ let lastResp = null, view = 'cards', recent = [];
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
-  ['search','category','detail'].forEach(m => $('mode-'+m).style.display = 'none');
+  ['search','category','categories'].forEach(m => $('mode-'+m).style.display = 'none');
   $('mode-'+t.dataset.mode).style.display = 'block';
 });
 
@@ -298,17 +309,21 @@ async function run(mode){
   if(!key){ flash('Enter your RapidAPI key first', true); return; }
 
   let path, params = {};
+  const ctx = $('ctxMode').value.trim() || 'delivery';
   if(mode==='search'){
     const q = $('q').value.trim();
     if(!q){ flash('Enter a search query', true); return; }
-    path = $('p_search').value; params.query = q; params.q = q;
+    path = $('p_search').value;
+    params = { query: q, context_mode: ctx, page: $('s_page').value, limit: $('s_limit').value };
     saveRecent(q);
   } else if(mode==='category'){
     const c = $('cat').value.trim();
-    path = $('p_category').value; params.category = c; params.slug = c;
-  } else {
-    const id = $('pid').value.trim();
-    path = $('p_detail').value; params.id = id; params.productId = id; params.url = id;
+    if(!c){ flash('Enter a category id/slug', true); return; }
+    path = $('p_category').value;
+    params = { category: c, id: c, slug: c, context_mode: ctx, page: $('c_page').value, limit: $('c_limit').value };
+  } else { // categories list
+    path = $('p_categories').value;
+    params = { refresh: $('refresh').value };
   }
 
   const qs = new URLSearchParams(params).toString();
